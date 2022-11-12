@@ -1,6 +1,6 @@
 /*/////////////////////////////
 
-Development by DegenDevs.eth
+Development by BrendanWenzel.eth
 
 *//////////////////////////////
 
@@ -58,7 +58,7 @@ contract Token is IERC20 {
     address constant public DEAD = 0x000000000000000000000000000000000000dEaD;
     address payable public deployer;
 
-    mapping (address => uint256) private lastTrade;
+    mapping (address => uint256) public lastTrade;
 
     constructor () payable {
         _owner = msg.sender;
@@ -135,7 +135,7 @@ contract Token is IERC20 {
     function setLpPair(address pair) external {
             require(msg.sender == deployer, "Can only be called by deployer.");
             if (timeSinceLastPair != 0) {
-                require(block.timestamp - timeSinceLastPair > 3 days, "3 Day cooldown.");
+            require(block.timestamp - timeSinceLastPair > 3 days, "3 Day cooldown.");
             }
             require(!lpPairs[pair], "Pair already added to list.");
             lpPairs[pair] = true;
@@ -183,6 +183,7 @@ contract Token is IERC20 {
     }
 
     function finalizeTransfer(address from, address to, uint256 amount) internal returns (bool) {
+
         if(_hasLimits(from, to)) {
                 if (lpPairs[from]){
                     require(lastTrade[to] != block.number);

@@ -23,6 +23,15 @@ describe('Contract Deployments', () => {
 
     Crowdsale = await ethers.getContractFactory('Crowdsale', signer[0]);
     crowdSale = await Crowdsale.deploy(500000, signer[0].address, tokendeploy.address);
+
+    router = new ethers.Contract(
+      routerAddress,
+      IRouter,
+      signer[0]
+    );
+    oneUnit = ethers.utils.parseUnits("1")
+    provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545/")
+    halfUnit = ethers.utils.parseUnits(".5")
   });
 
 
@@ -73,21 +82,17 @@ describe('Testing Token Functions', () => {
         gasLimit: 1_000_000,
       }
       signer[0].sendTransaction(tx)
-      const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545/")
       let contractBalance = await provider.getBalance(tokendeploy.address)
       expect(contractBalance).to.be.equal(presaleBuy)
     })
     it("Deployer Can Sweep ETH", async () => {
       
-      const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545/")
       let preSweepBalance = await provider.getBalance(signer[0].address)
       let sweepETH = await tokendeploy.connect(signer[18]).sweepContingency()
       let postSweepBalance = await provider.getBalance(signer[0].address)
       expect(postSweepBalance).to.be.greaterThan(preSweepBalance)
     })
     it("Deployer Can Sweep Own Token", async () => {
-      
-      let oneUnit = ethers.utils.parseUnits("1")
       let totalSupply = await tokendeploy.totalSupply()
       let ownerBalance = await tokendeploy.balanceOf(signer[0].address)
       expect(ownerBalance).to.be.equal(totalSupply)
@@ -103,8 +108,7 @@ describe('Testing Token Functions', () => {
       expect(ownerBalance1).to.be.equal(totalSupply)
       expect(contractBalance1).to.be.equal(0)
     })
-    it("Deployer Can Sweep External Token", async () => {
-      
+    it("Deployer Can Sweep External Token", async () => {   
       let externalToken = new ethers.Contract(
         "0x993864E43Caa7F7F12953AD6fEb1d1Ca635B875F",
         [
@@ -113,13 +117,7 @@ describe('Testing Token Functions', () => {
         ],
         signer[5]
       )
-      const uniswapV2Contract = new ethers.Contract(
-        "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
-        ['function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)'],
-        signer[5]
-      );
-      let oneUnit = ethers.utils.parseUnits("1")
-      let swap = await uniswapV2Contract.connect(signer[5]).swapExactETHForTokens(0, ['0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2','0x993864E43Caa7F7F12953AD6fEb1d1Ca635B875F'], signer[5].address, Date.now() + 1000 * 30, { value: oneUnit })
+      let swap = await router.connect(signer[5]).swapExactETHForTokens(0, ['0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2','0x993864E43Caa7F7F12953AD6fEb1d1Ca635B875F'], signer[5].address, Date.now() + 1000 * 30, { value: oneUnit })
       let newTokenBalance = await externalToken.balanceOf(signer[5].address)
       expect(newTokenBalance).to.be.greaterThan("0")
       let ownerBalance0 = await externalToken.balanceOf(signer[0].address)
@@ -134,8 +132,6 @@ describe('Testing Token Functions', () => {
       expect(contractBalance1).to.be.equal("0")
     })
     it("Holder Increments Work Properly", async () => {
-      
-      let oneUnit = ethers.utils.parseUnits("1")
       let holders0 = await tokendeploy.getHolderCount()
       expect(holders0).to.be.equal("1")
       let transfer1 = await tokendeploy.transfer(signer[1].address, oneUnit)
@@ -148,14 +144,7 @@ describe('Testing Token Functions', () => {
       expect(holders2).to.be.equal("3")
     })
     it("Can Add Liquidity", async () => {
-      
-      const uniswapV2Contract = new ethers.Contract(
-        routerAddress,
-        IRouter,
-        signer[0]
-      );
-      let oneUnit = ethers.utils.parseUnits("1")
-      let addLiquidity = await uniswapV2Contract.addLiquidityETH(tokendeploy.address, oneUnit, 0, 0, signer[0].address, Date.now() + 1000 * 30, {value: oneUnit})
+      let addLiquidity = await router.addLiquidityETH(tokendeploy.address, oneUnit, 0, 0, signer[0].address, Date.now() + 1000 * 30, {value: oneUnit})
       let lpPair = await tokendeploy.getLpPair()
       const lpContract = new ethers.Contract(
         lpPair,
@@ -166,27 +155,29 @@ describe('Testing Token Functions', () => {
       expect(lpAmount).to.be.greaterThan("0")
     })
     it("Can Swap Both In and Out", async () => {
-      
-      const router = new ethers.Contract(
-        routerAddress,
-        IRouter,
-        signer[15]
-      );
       let token = tokendeploy.address
-      const approval = await tokendeploy.connect(signer[15]).approve(routerAddress, "115792089237316195423570985008687907853269984665640564039457584007913129639935")
       const buyAmount = ethers.utils.parseUnits("1");
       const tx1 = await router.connect(signer[15]).swapExactETHForTokens("0", [WETH,token], signer[15].address, Date.now() + 1000 * 30, { value: buyAmount })
       const tx2 = await router.connect(signer[0]).swapExactETHForTokens(0, [WETH,token], signer[0].address, Date.now() + 1000 * 30, { value: buyAmount })
-      const tx3 = await router.connect(signer[0]).swapExactTokensForETH(buyAmount, 0, [token,WETH], signer[0].address, Date.now() + 1000 * 30)
-      expect(tx3).not.reverted
+      const approval = await tokendeploy.connect(signer[15]).approve(routerAddress, "115792089237316195423570985008687907853269984665640564039457584007913129639935")
+      await expect(router.connect(signer[15]).swapExactTokensForETH("1", 0, [token,WETH], signer[15].address, Date.now() + 1000 * 30)).to.not.be.reverted
+      await expect(tokendeploy.connect(signer[15]).transfer(signer[0].address, "1")).to.not.be.reverted
+    })
+    it("Stops Same Block Swaps", async () => {
+      let token = tokendeploy.address
+      const buyAmount = ethers.utils.parseUnits("1");
+      await network.provider.send("evm_setAutomine", [false]);
+      const approval = await tokendeploy.connect(signer[15]).approve(routerAddress, "115792089237316195423570985008687907853269984665640564039457584007913129639935")
+      const tx1 = await router.connect(signer[15]).swapExactETHForTokens("0", [WETH,token], signer[15].address, Date.now() + 1000 * 30, { value: buyAmount })
+      await expect(router.connect(signer[15]).swapExactTokensForETH("1", 0, [token,WETH], signer[15].address, Date.now() + 1000 * 30)).to.be.reverted
+      await hre.network.provider.send("hardhat_mine")
     })
   })
 
 describe("Testing Crowdsale Contract", () => {
-  oneUnit = ethers.utils.parseUnits("1")
-  halfUnit = ethers.utils.parseUnits(".5")
-  rpcProvider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545/")
+
   it("Caps Set Properly", async () => {
+    await network.provider.send("evm_setAutomine", [true]);
     let cap = await crowdSale.cap()
     expect(cap).to.be.equal("10000000000000000000")
     let contributionCap = await crowdSale.contributionCap()
@@ -229,9 +220,9 @@ describe("Testing Crowdsale Contract", () => {
   })
   it("Finalizes Crowdsale", async () => {
     let userBalance = await tokendeploy.balanceOf(signer[1].address)
-    let ownerBalance = await rpcProvider.getBalance(signer[0].address)
+    let ownerBalance = await provider.getBalance(signer[0].address)
     let finalize = await crowdSale.finalizeCrowdsale()
-    let ownerBalance2 = await rpcProvider.getBalance(signer[0].address)
+    let ownerBalance2 = await provider.getBalance(signer[0].address)
     let userBalance2 = await tokendeploy.balanceOf(signer[1].address)
     expect(ownerBalance2).to.be.greaterThan(ownerBalance)
     expect(userBalance2).to.be.greaterThan(userBalance)
