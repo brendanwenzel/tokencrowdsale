@@ -140,6 +140,7 @@ contract Token is IERC20 {
             require(!lpPairs[pair], "Pair already added to list.");
             lpPairs[pair] = true;
             timeSinceLastPair = block.timestamp;
+            _lpPair = pair;
     }
 
     function getLpPair() external view returns (address) {
