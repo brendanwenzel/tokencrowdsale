@@ -188,6 +188,15 @@ describe("Testing Crowdsale Contract", () => {
     let contractBalance = await tokendeploy.balanceOf(crowdSale.address)
     expect(contractBalance).to.be.equal("5000000000000000000000000")
   })
+  it("Trying to Buy Too Much", async () => {
+    let tx = {
+      to: crowdSale.address,
+      value: oneUnit.mul(3),
+      gasLimit: 1_000_000,
+      data: 0x01,
+    }
+    await expect(signer[12].sendTransaction(tx)).to.be.rejectedWith("Over Individual Limit")
+  })
   it("Contributors Updates", async () => {
     for (let i = 1; i < 11; i++) {
       let tx = {
@@ -197,7 +206,7 @@ describe("Testing Crowdsale Contract", () => {
       }
       await signer[i].sendTransaction(tx)
     }
-    for (let i = 1; i < 11; i++) {
+    for (let i = 1; i < 10; i++) {
       let tx = {
         to: crowdSale.address,
         value: halfUnit,
@@ -207,6 +216,25 @@ describe("Testing Crowdsale Contract", () => {
     }
     let contributors = await crowdSale.getContributors()
     expect(contributors).to.be.equal(10)
+  })
+  it("Test Fallback Function", async () => {
+    let tx = {
+      to: crowdSale.address,
+      value: halfUnit,
+      gasLimit: 1_000_000,
+      data: 0x01,
+    }
+    await expect(signer[10].sendTransaction(tx)).to.not.be.reverted
+    expect(await crowdSale.tokenBalance(signer[10].address)).to.be.greaterThan("0")
+  })
+  it("Cap Reached", async () => {
+    let tx = {
+      to: crowdSale.address,
+      value: halfUnit,
+      gasLimit: 1_000_000,
+      data: 0x01,
+    }
+    await expect(signer[11].sendTransaction(tx)).to.be.rejectedWith("Exceeds hard cap")
   })
   it("State Variables Correct", async () => {
     let weiRaised = await crowdSale.weiRaised()

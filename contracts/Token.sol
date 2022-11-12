@@ -58,7 +58,7 @@ contract Token is IERC20 {
     address constant public DEAD = 0x000000000000000000000000000000000000dEaD;
     address payable public deployer;
 
-    mapping (address => uint256) public lastTrade;
+    mapping (address => uint256) private lastTrade;
 
     constructor () payable {
         _owner = msg.sender;

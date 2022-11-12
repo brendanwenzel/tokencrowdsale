@@ -97,9 +97,9 @@ contract Crowdsale {
   {
     require(_beneficiary != address(0));
     require(_weiAmount != 0);
-    require(weiRaised + _weiAmount <= cap, "Purchase exceeds the hard cap");
-    require(contributions[_beneficiary] + _weiAmount <= contributionCap, "Only Allowed to Buy .5ETH");
-    require(token.balanceOf(address(this)) != 0, "Presale has not been funded yet");
+    require(weiRaised + _weiAmount <= cap, "Exceeds hard cap");
+    require(contributions[_beneficiary] + _weiAmount <= contributionCap, "Over Individual Limit");
+    require(token.balanceOf(address(this)) != 0, "Not Funded");
   }
 
   function _postValidatePurchase(
@@ -107,8 +107,8 @@ contract Crowdsale {
   )
     internal view
   {
-    require(contributions[_beneficiary] <= contributionCap, "Only Allowed to Buy .5ETH");
-    require(weiRaised <= cap, "Purchase exceeds the hard cap");
+    require(contributions[_beneficiary] <= contributionCap, "Over Individual Limit");
+    require(weiRaised <= cap, "Exceeds hard cap");
   }
 
   function _updatePurchasingState(
