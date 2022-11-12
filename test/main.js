@@ -33,13 +33,13 @@ describe('Contract Deployments', () => {
     provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545/")
     halfUnit = ethers.utils.parseUnits(".5")
     token = tokendeploy.address
+    totalSupply = await tokendeploy.totalSupply()
   });
 
 
 describe('Testing Token Functions', () => {
 
     it('Mint and Transfer to Owner', async () => {
-      let totalSupply = await tokendeploy.totalSupply()
       expect(totalSupply).to.be.equal("10000000000000000000000000")
       let ownerBalance = await tokendeploy.balanceOf(signer[0].address)
       expect(ownerBalance).to.be.equal("10000000000000000000000000")
@@ -75,26 +75,22 @@ describe('Testing Token Functions', () => {
       expect(deployer).to.be.equal(signer[0].address)
     })
     it('Contract Can Receive ETH', async () => {
-      
-      const presaleBuy = ethers.utils.parseUnits("1");
-      let tx = {
+        let tx = {
         to: tokendeploy.address,
-        value: presaleBuy,
+        value: oneUnit,
         gasLimit: 1_000_000,
       }
       signer[0].sendTransaction(tx)
       let contractBalance = await provider.getBalance(tokendeploy.address)
-      expect(contractBalance).to.be.equal(presaleBuy)
+      expect(contractBalance).to.be.equal(oneUnit)
     })
     it("Deployer Can Sweep ETH", async () => {
-      
       let preSweepBalance = await provider.getBalance(signer[0].address)
       let sweepETH = await tokendeploy.connect(signer[18]).sweepContingency()
       let postSweepBalance = await provider.getBalance(signer[0].address)
       expect(postSweepBalance).to.be.greaterThan(preSweepBalance)
     })
     it("Deployer Can Sweep Own Token", async () => {
-      let totalSupply = await tokendeploy.totalSupply()
       let ownerBalance = await tokendeploy.balanceOf(signer[0].address)
       expect(ownerBalance).to.be.equal(totalSupply)
       let transferToContract = await tokendeploy.connect(signer[0]).transfer(tokendeploy.address, oneUnit)
@@ -156,18 +152,16 @@ describe('Testing Token Functions', () => {
       expect(lpAmount).to.be.greaterThan("0")
     })
     it("Can Swap Both In and Out", async () => {
-      const buyAmount = ethers.utils.parseUnits("1");
-      const tx1 = await router.connect(signer[15]).swapExactETHForTokens("0", [WETH,token], signer[15].address, Date.now() + 1000 * 30, { value: buyAmount })
-      const tx2 = await router.connect(signer[0]).swapExactETHForTokens(0, [WETH,token], signer[0].address, Date.now() + 1000 * 30, { value: buyAmount })
+      const tx1 = await router.connect(signer[15]).swapExactETHForTokens("0", [WETH,token], signer[15].address, Date.now() + 1000 * 30, { value: oneUnit })
+      const tx2 = await router.connect(signer[0]).swapExactETHForTokens(0, [WETH,token], signer[0].address, Date.now() + 1000 * 30, { value: oneUnit })
       const approval = await tokendeploy.connect(signer[15]).approve(routerAddress, "115792089237316195423570985008687907853269984665640564039457584007913129639935")
       await expect(router.connect(signer[15]).swapExactTokensForETH("1", 0, [token,WETH], signer[15].address, Date.now() + 1000 * 30)).to.not.be.reverted
       await expect(tokendeploy.connect(signer[15]).transfer(signer[0].address, "1")).to.not.be.reverted
     })
     it("Stops Same Block Swaps", async () => {
-      const buyAmount = ethers.utils.parseUnits("1");
       await network.provider.send("evm_setAutomine", [false]);
       const approval = await tokendeploy.connect(signer[15]).approve(routerAddress, "115792089237316195423570985008687907853269984665640564039457584007913129639935")
-      const tx1 = await router.connect(signer[15]).swapExactETHForTokens("0", [WETH,token], signer[15].address, Date.now() + 1000 * 30, { value: buyAmount })
+      const tx1 = await router.connect(signer[15]).swapExactETHForTokens("0", [WETH,token], signer[15].address, Date.now() + 1000 * 30, { value: oneUnit })
       await expect(router.connect(signer[15]).swapExactTokensForETH("1", 0, [token,WETH], signer[15].address, Date.now() + 1000 * 30)).to.be.reverted
       await hre.network.provider.send("hardhat_mine")
     })
@@ -184,9 +178,9 @@ describe('Testing Token Functions', () => {
       expect(await tokendeploy.connect(signer[17]).allowance(signer[17].address, routerAddress)).to.equal(oneUnit.sub(1))
     })
     it("Circulating Supply", async () => {
-      expect(await tokendeploy.getCirculatingSupply()).to.be.equal(await tokendeploy.totalSupply())
+      expect(await tokendeploy.getCirculatingSupply()).to.be.equal(totalSupply)
       await tokendeploy.transfer("0x000000000000000000000000000000000000dEaD", "1")
-      expect(await tokendeploy.getCirculatingSupply()).to.equal((await tokendeploy.totalSupply()).sub(1))
+      expect(await tokendeploy.getCirculatingSupply()).to.equal(totalSupply.sub(1))
     })
   })
 
