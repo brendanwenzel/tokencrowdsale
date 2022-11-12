@@ -175,6 +175,18 @@ describe('Testing Token Functions', () => {
       await network.provider.send("evm_setAutomine", [true]);
       await tokendeploy.setLpPair("0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc")
       expect((await tokendeploy.getLpPair()).toLowerCase()).to.equal("0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc")
+      await expect(tokendeploy.setLpPair(signer[20].address)).to.be.rejectedWith("3 Day cooldown.")
+    })
+    it("Allowances change with transfer", async () => {
+      let approval = await tokendeploy.connect(signer[17]).approve(routerAddress, oneUnit)
+      let tx1 = await router.connect(signer[17]).swapExactETHForTokens("0", [WETH,token], signer[17].address, Date.now() + 1000 * 30, { value: oneUnit })
+      let tx2 = await router.connect(signer[17]).swapExactTokensForETH("1", 0, [token,WETH], signer[17].address, Date.now() + 1000 * 30)
+      expect(await tokendeploy.connect(signer[17]).allowance(signer[17].address, routerAddress)).to.equal(oneUnit.sub(1))
+    })
+    it("Circulating Supply", async () => {
+      expect(await tokendeploy.getCirculatingSupply()).to.be.equal(await tokendeploy.totalSupply())
+      await tokendeploy.transfer("0x000000000000000000000000000000000000dEaD", "1")
+      expect(await tokendeploy.getCirculatingSupply()).to.equal((await tokendeploy.totalSupply()).sub(1))
     })
   })
 

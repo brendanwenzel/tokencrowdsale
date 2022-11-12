@@ -9,3 +9,5 @@ The other major feature is not allowing anyone to make two swaps in a single blo
 The crowdsale contract is simple. It allows people to purchase a token with caps on individual and total raised.
 
 When finalized, the contract will send the ether to the owner and the tokens to the buyers.
+
+## Notes
